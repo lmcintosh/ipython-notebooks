@@ -12,8 +12,8 @@ from emailing import *
 
 
 try:
-    M     = 70
-    nBins = 500
+    M     = int(60)
+    nBins = 250
     adapt = linspace(0,25,100)
     
     steady_state_mem  = []
@@ -75,13 +75,13 @@ try:
     
 
     with open('masters_data_steadyState_' + str(datetime.date.today()) + '.pik', 'wb') as f:
-        pickle.dump([steady_state_mem, steady_state_pred, steady_state_max])
+        pickle.dump([steady_state_mem, steady_state_pred, steady_state_max], f, -1)
 
     with open('masters_data_sum_' + str(datetime.date.today()) + '.pik', 'wb') as f:
-        pickle.dump([sum_mem, sum_pred, sum_max])
+        pickle.dump([sum_mem, sum_pred, sum_max], f, -1)
 
     with open('masters_data_examples_' + str(datetime.date.today()) + '.pik', 'wb') as f:
-        pickle.dump([i_mem_fnA, i_pred_fnA, i_max_fnA])
+        pickle.dump([i_mem_fnA, i_pred_fnA, i_max_fnA], f, -1)
 
 
 
