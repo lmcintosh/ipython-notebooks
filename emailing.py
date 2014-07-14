@@ -40,4 +40,19 @@ def emailWhenError(sysexecinfo):
     smtpserver.sendmail(gmail_user, to, msg) #Sending the mail
     smtpserver.close() #closing the mailserver connection
     
-    
+# text arbitrary string
+def emailMe(string):
+    import smtplib
+
+    to = 'lanemcintosh@gmail.com' #insert reciever email address (can be same as sender)
+    gmail_user = 'mcintoshlane@gmail.com' #your gmail sender address
+    gmail_pwd = 'hansolo8chewy' #your gmail password
+    smtpserver = smtplib.SMTP("smtp.gmail.com",587) #the technical stuff
+    smtpserver.ehlo() #the technical stuff
+    smtpserver.starttls() #the technical stuff
+    smtpserver.ehlo #the technical stuff
+    smtpserver.login(gmail_user, gmail_pwd) #the technical stuff
+    header = 'To:' + to + '\n' + 'From: ' + gmail_user + '\n' + 'Subject:Market Conditions \n'
+    msg = header + '\n' + string  #The completion message
+    smtpserver.sendmail(gmail_user, to, msg) #Sending the mail
+    smtpserver.close() #closing the mailserver connection
