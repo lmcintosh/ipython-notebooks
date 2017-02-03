@@ -60,8 +60,10 @@ class NBCPT(object):
         #p_c = c*self.prior + (1 - c)*(1 - self.prior)
 
         mask = (C == c) & (A[:,self.index] != -1)
-        denom = 1.*np.sum(mask) # np.sum(C == c)
-        numer = 1.*np.sum(A[mask, self.index])
+    
+        # the + 2 and + 1 are Laplace Smoothing
+        denom = 1.*np.sum(mask) + 2*alpha # np.sum(C == c)
+        numer = 1.*np.sum(A[mask, self.index]) + alpha
         self.p[c] = numer/denom
 
 
@@ -104,9 +106,6 @@ class NBClassifier(object):
     for i in xrange(nvars):
         self.cpts[i].learn(A_train, C_train)
 
-    #return self
-    pass
-
 
   def classify(self, entry):
     '''
@@ -134,8 +133,7 @@ class NBClassifier(object):
                 log_probs[c].append(np.log(this_p))
             else:
                 # getting underflows on this
-                eps = 10e-30
-                log_probs[c].append(np.log(1 - this_p + eps))
+                log_probs[c].append(np.log(1 - this_p))
 
 
     # now get P(X) = sum_Pa(X) P(Pa(X)) * P(X | Pa(X))
@@ -168,7 +166,17 @@ class TANBCPT(object):
      - A_p: the index of its parent variable (in the Chow-Liu algorithm,
        the learned structure will have a single parent for each child)
     '''
-    raise NotImplementedError()
+    self.index = A_i
+    self.parent = A_p
+
+    # we need to store the probability of A_i
+    # given both the class c and parent A_p
+    # keys are (class, parent) tuples
+    if self.parent:
+        self.p = Counter({(0,0):0, (1,0):0, (0,1):0, (1,1):0})
+    else:
+        self.p = Counter({0:0, 1:0})
+
 
   def learn(self, A, C):
     '''
@@ -178,17 +186,27 @@ class TANBCPT(object):
      - C: a 1-d n-element numpy where the elements correspond to the class
        labels of the rows in A
     '''
-    pass
+    M, N = A.shape
+    self.prior = 1.*np.sum(C == 1) / M
 
-  def get_cond_prob(self, entry, c):
-    '''
-    TODO return the conditional probability P(X|Pa(X)) for the values
-    specified in the example entry and class label c  
-        - entry: full assignment of variables 
-                e.g. entry = np.array([0,1,1]) means A_0 = 0, A_1 = 1, A_2 = 1
-        - c: the class               
-    '''
-    pass
+    for c in xrange(2):
+        if self.parent:
+            for pa in xrange(2):
+                #p_c = c*self.prior + (1 - c)*(1 - self.prior)
+
+                mask = (C == c) & (A[:,self.index] != -1) & (A[:,self.parent] == pa)
+            
+                # the + 2 and + 1 are Laplace Smoothing
+                denom = 1.*np.sum(mask) + 2*alpha # np.sum(C == c)
+                numer = 1.*np.sum(A[mask, self.index]) + alpha
+                self.p[(c,pa)] = numer/denom
+        else:
+            mask = (C == c) & (A[:,self.index] != -1) 
+            
+            # the + 2 and + 1 are Laplace Smoothing
+            denom = 1.*np.sum(mask) + 2*alpha # np.sum(C == c)
+            numer = 1.*np.sum(A[mask, self.index]) + alpha
+            self.p[c] = numer/denom
 
 
 
@@ -208,7 +226,27 @@ class TANBClassifier(NBClassifier):
           the class labels of the rows in A
 
     '''
-    raise NotImplementedError()
+    M, N = A_train.shape
+    self.prior = 1.*np.sum(C_train == 1) / M
+
+    mst = get_mst(A_train, C_train)
+    root = get_tree_root(mst)
+    
+    self.remaining_nodes = [x for x in xrange(N)]
+    self.nodes = []
+    self.nodes.append(TANBCPT(root, None))
+    self.remaining_nodes.remove(root)
+
+    edge = get_tree_edges(mst, root)
+    for parent, child in edge:
+        self.nodes.append(TANBCPT(child, parent))
+        self.remaining_nodes.remove(child)
+
+    for child in self.remaining_nodes:
+        self.nodes.append(TANBCPT(child, None))
+        self.remaining_nodes.remove(child)
+
+    self._train(A_train, C_train)
 
 
   def _train(self, A_train, C_train):
@@ -220,7 +258,9 @@ class TANBClassifier(NBClassifier):
         - C_train: a 1-d n-element numpy where the elements correspond to
           the class labels of the rows in A
     '''
-    pass
+    for node in self.nodes:
+        node.learn(A_train, C_train)
+
 
   def classify(self, entry):
     '''
@@ -237,7 +277,34 @@ class TANBClassifier(NBClassifier):
     variable and also the log of the conditional probability of this
     assignment in a tuple, e.g. return (c_pred, logP_c_pred)
     '''
-    pass
+        # p(Pa(X) | X) = p(X | Pa(X)) * P(Pa(X)) / P(X)
+    log_probs = collections.defaultdict(list)
+    for c in xrange(2):
+        p_c = c*self.prior + (1 - c)*(1 - self.prior)
+        log_probs[c].append(np.log(p_c))
+
+        for node in self.nodes:
+            if node.parent:
+                this_p = node.p[(c,entry[node.parent])]
+            else:
+                this_p = node.p[c]
+
+            if entry[node.index]:
+                log_probs[c].append(np.log(this_p))
+            else:
+                log_probs[c].append(np.log(1 - this_p))
+
+
+    # now get P(X) = sum_Pa(X) P(Pa(X)) * P(X | Pa(X))
+    choice = [np.sum(log_probs[0]), np.sum(log_probs[1])]
+    log_px = np.sum(choice)
+    c_pred = np.argmax(choice)
+
+    #import pdb
+    #pdb.set_trace()
+
+    return (c_pred, choice[c_pred] - log_px)
+
 
 # load all data
 A_base, C_base = load_vote_data()
