@@ -57,27 +57,12 @@ class NBCPT(object):
     self.prior = 1.*np.sum(C == 1) / M
 
     for c in xrange(2):
-        p_c = c*self.prior + (1 - c)*(1 - self.prior)
+        #p_c = c*self.prior + (1 - c)*(1 - self.prior)
 
         mask = (C == c) & (A[:,self.index] != -1)
         denom = 1.*np.sum(mask) # np.sum(C == c)
         numer = 1.*np.sum(A[mask, self.index])
         self.p[c] = numer/denom
-
-
-  def get_cond_prob(self, entry, c):
-    '''
-    TODO return the conditional probability P(X|Pa(X)) for the values
-    specified in the example entry and class label c
-        - entry: full assignment of variables 
-            e.g. entry = np.array([0,1,1]) means A_0 = 0, A_1 = 1, A_2 = 1
-        - c: the class 
-    '''
-    prob = 1
-    for index, val in enumerate(entry):
-        prob *= self.p[c]
-
-    return prob
 
 
 class NBClassifier(object):
@@ -144,15 +129,22 @@ class NBClassifier(object):
         for index, val in enumerate(entry):
             #import pdb
             #pdb.set_trace()
-            log_probs[c].append(np.log(self.cpts[index].likelihood[index][val]))
+            this_p = self.cpts[index].p[c]
+            if val:
+                log_probs[c].append(np.log(this_p))
+            else:
+                # getting underflows on this
+                eps = 10e-30
+                log_probs[c].append(np.log(1 - this_p + eps))
+
 
     # now get P(X) = sum_Pa(X) P(Pa(X)) * P(X | Pa(X))
     choice = [np.sum(log_probs[0]), np.sum(log_probs[1])]
     log_px = np.sum(choice)
     c_pred = np.argmax(choice)
 
-    import pdb
-    pdb.set_trace()
+    #import pdb
+    #pdb.set_trace()
 
     return (c_pred, choice[c_pred] - log_px)
     #return (c_pred, logP_c_pred)
