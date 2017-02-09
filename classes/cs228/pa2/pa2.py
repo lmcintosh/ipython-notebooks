@@ -86,7 +86,7 @@ class NBClassifier(object):
     self.prior = 1.*np.sum(C_train == 1) / M
     
     self.cpts = []
-    for i in xrange(A_train.shape[0]):
+    for i in xrange(A_train.shape[1]):
         self.cpts.append(NBCPT(i))
 
     self._train(A_train, C_train)
@@ -138,7 +138,8 @@ class NBClassifier(object):
 
     # now get P(X) = sum_Pa(X) P(Pa(X)) * P(X | Pa(X))
     choice = [np.sum(log_probs[0]), np.sum(log_probs[1])]
-    log_px = np.sum(choice)
+    # log p(x) is sum of both probs - but not in log space!
+    log_px = np.log(np.sum([np.exp(ch) for ch in choice]))
     c_pred = np.argmax(choice)
 
     #import pdb
@@ -285,19 +286,36 @@ class TANBClassifier(NBClassifier):
 
         for node in self.nodes:
             if node.parent:
-                this_p = node.p[(c,entry[node.parent])]
+                if entry[node.parent] == -1:
+                    # p(c | {a_n} \ a_i)
+                    #   = sum_{a_i} p(c, a_i | a_1, ..., a_n)
+                    # MARGINALIZING
+                    pos_freq = node.p[(0,1)] + node.p[(1,1)]
+                    neg_freq = node.p[(0,0)] + node.p[(1,0)]
+                    Z = pos_freq + neg_freq
+                    pos_freq /= Z
+                    neg_freq /= Z
+
+                    this_p = node.p[(c,0)]*neg_freq \
+                             + node.p[(c,1)]*pos_freq
+                else:
+                    this_p = node.p[(c,entry[node.parent])]
             else:
                 this_p = node.p[c]
 
-            if entry[node.index]:
+            # Marginalizing here would result in multiplying
+            # by 1
+            if entry[node.index] > 0:
                 log_probs[c].append(np.log(this_p))
-            else:
+            elif entry[node.index] == 0:
                 log_probs[c].append(np.log(1 - this_p))
+                
 
 
     # now get P(X) = sum_Pa(X) P(Pa(X)) * P(X | Pa(X))
     choice = [np.sum(log_probs[0]), np.sum(log_probs[1])]
-    log_px = np.sum(choice)
+    #log_px = np.sum(choice)
+    log_px = np.log(np.sum([np.exp(ch) for ch in choice]))
     c_pred = np.argmax(choice)
 
     #import pdb
@@ -345,8 +363,8 @@ def evaluate(classifier_cls, train_subset=False):
     A_test = A[i:i+step,:]
     C_test = C[i:i+step]
     if train_subset:
-      A_train = A_train[:16,:]
-      C_train = C_train[:16]
+      A_train = A_train[:11,:]
+      C_train = C_train[:11]
 
     # train the classifiers
     classifier = classifier_cls(A_train, C_train)
