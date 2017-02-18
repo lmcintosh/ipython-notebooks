@@ -45,9 +45,8 @@ def applyChannelNoise(y, p):
     yhat_i is obtained by flipping y_i with probability p 
     '''
     ###############################################################################
-    # TODO: Your code here! 
-
-    
+    random_matrix = np.random.rand(*y.shape)
+    yhat = np.where(random_matrix < p, 1 - y, y)
     
     ###############################################################################
     return yhat
@@ -82,7 +81,29 @@ def constructClusterGraph(yhat, H, p):
     G.sepset = [[None for _ in range(M+N)] for _ in range(M+N)]
     ##############################################################
     # To do: your code starts here
- 
+    for row in range(N):
+        # indicate which variables have connections in the adjacency matrix H
+        this_scope = [i for i,v in enumerate(H[row]) if v > 0]
+        this_card = [2]*len(this_scope)
+
+        # gather all of the 2^n possible assignments in order
+        assigns = indices_to_assignment(np.arange(2**len(this_scope)), this_card)
+        # assign 0 probability to assignments with mod % 2 = 1
+        this_val = 1.0 - (np.sum(assigns, axis=1) % 2)
+
+        f = Factor(scope=this_scope, card=this_card, val=this_val, name="parity")
+        G.factor.append(f)
+
+    # unary factors
+    for col in range(M):
+        # p(yhat_col = 0 | yhat) and p(yhat_col = 1 | yhat), respectively
+        if yhat[col] == 1:
+            this_val = [p, 1.0-p]
+        else:
+            this_val = [1.0-p, p]
+        f = Factor(scope=[col], card=[2], val=this_val, name="unary")
+        G.factor.append(f)
+
 
 
     ##############################################################
@@ -102,9 +123,9 @@ def do_part_a():
     # To do: your code starts here 
     # Design two invalid codewords ytest1, ytest2 and one valid codewords ytest3.
     # Report their weights respectively.
-    ytest1 = []
-    ytest2 = []
-    ytest3 = []
+    ytest1 = [1, 0, 1, 0, 1]
+    ytest2 = [1, 1, 1, 1, 1]
+    ytest3 = [0, 0, 0, 0, 0]
     ##############################################################
     print(
         G.evaluateWeight(ytest1), \
@@ -124,6 +145,42 @@ def do_part_c():
     y = encodeMessage(x, G)
     ##############################################################
     # To do: your code starts here
+
+    # apply noise on y
+    yhat = applyChannelNoise(y, p)
+
+    # initialize graph
+    Graph = constructClusterGraph(yhat, H, p)
+
+    # initialize neighbors and messages
+    for i,f in enumerate(Graph.factor):
+        Graph.nbr[i] = f.scope
+
+        #for v in Graph.nbr[i]:
+        for v in range(len(Graph.var)):
+            to_var = Factor(scope=[v], card=[2], val=np.array([0.5, 0.5]))
+            to_fac = Factor(scope=[v], card=[2], val=np.array([0.5, 0.5]))
+            Graph.messages['var %d, fac %d' %(v,i)] = to_fac
+            Graph.messages['fac %d, var %d' %(i,v)] = to_var
+
+    # initialize varToCliques
+    for var_i in range(len(Graph.varToCliques)):
+        for fac_j,neighbors in enumerate(Graph.nbr):
+            if var_i in neighbors:
+                Graph.varToCliques[var_i].append(fac_j)
+
+
+    iterations = 50
+    Graph.runParallelLoopyBP(iterations)
+
+    # collect probabilities that bits = 1
+    marginals = [Graph.estimateMarginalProbability(i)[1] for i in range(len(yhat))]
+
+    #import pdb
+    #pdb.set_trace()
+
+    # plot it
+    plt.scatter(range(len(yhat)), marginals, s=10, color='k')
 
 
 
@@ -158,16 +215,17 @@ def do_part_fg(error):
     ################################################################
 
 print('Doing part (a): Should see 0.0, 0.0, >0.0')
-#do_part_a()
+do_part_a()
 print('Doing part (c)')
 #do_part_c()
-print('Doing part (d)')
+#print('Doing part (d)')
 #do_part_de(10, 0.06)
-print('Doing part (e)')
+#print('Doing part (e)')
 #do_part_de(10, 0.08)
 #do_part_de(10, 0.10)
-print('Doing part (f)')
+#print('Doing part (f)')
 #do_part_fg(0.06)
-print('Doing part (g)')
+#print('Doing part (g)')
 #do_part_fg(0.10)
+
 

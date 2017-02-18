@@ -16,9 +16,8 @@ class ClusterGraph:
                      for this programming assignments, all the domains are [0,1]
         varToCliques - list of lists: the i-th element is a list with the indices 
                      of cliques/factors that contain the i-th variable
-        nbr - list of lists: it has the same length with the number of cliques/factors,
-                    if factor[i] and factor[j] shares variable(s), then j is in nbr[i]
-                    and i is in nbr[j]
+        nbr - list of lists: each j-th entry contains the Y variables in the scope of the j-th factor 
+                (for parity and unary factors)
         factor: a list of Factors
         sepset: two dimensional array, sepset[i][j] is a list of variables shared by 
                 factor[i] and factor[j]
@@ -71,12 +70,61 @@ class ClusterGraph:
         Warning: Don't forget to normalize the message at each time. You may find the normalize
         method in Factor useful.
         '''
+        #import pdb
+        #pdb.set_trace()
         for iter in range(iterations):
         ###############################################################################
         # To do: your code here
+            # go through each factor updating the var to fac messages
+            for s,fs in enumerate(self.factor):
+                for i in self.nbr[s]:
+                    key = 'var %d, fac %d' %(i, s)
+                    for t in self.varToCliques[i]:
+                        if s != t:
+                            prod_key = 'fac %d, var %d' %(t, i)
+                            #import pdb
+                            #pdb.set_trace()
+                            self.messages[key] = self.messages[key].multiply(self.messages[prod_key])
 
-        
-           0;
+
+                # update the fac to var messages
+                for i in self.nbr[s]:
+                    key = 'var %d, fac %d' %(i, s)
+                    for j in self.nbr[s]:
+                        if i != j:
+                            prod_key = 'var %d, fac %d' %(j, s)
+                            self.messages[key] = self.messages[key].multiply(self.messages[prod_key])
+                    self.messages[key] = self.messages[key].marginalize_all_but([i])
+
+                    # normalize
+                    self.messages[key] = self.messages[key].normalize()
+                            
+                
+                        
+                        
+            #    src, src_i, dst, dst_i = key.split(' ')
+            #for i,v in enumerate(self.var):
+            #for key in self.messages.keys():
+            #    src, src_i, dst, dst_i = key.split(' ')
+
+                # each key is (src, dst) pair
+                #src, dst = key
+
+                # for b in N(i) \ a
+            #    prod = 1.0
+            #    for b in self.nbr[src]:
+                #for b in self.sepset[src]
+            #        if b != dst:
+            #            prod *= self.messages[(b, src)]
+
+                # set the new message to be this product
+                #self.messages[key] = prod
+
+                # normalize the message at each time
+                #f = self.messages[key]
+                #f = f.normalize()
+                #self.messages[key] = f
+
         ###############################################################################
         
 
@@ -95,9 +143,15 @@ class ClusterGraph:
         '''
         ###############################################################################
         # To do: your code here  
+        for i,f in enumerate(self.varToCliques[var]):
+            key = 'fac %d, var %d' %(f, var)
 
-        
-        
+            if i == 0:
+                marginal_p = self.messages[key]
+            else:
+                marginal_p = marginal_p.multiply(self.messages[key])
+            
+        return marginal_p.val
         ###############################################################################
     
 

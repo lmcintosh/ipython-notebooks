@@ -77,7 +77,7 @@ class Factor:
         """
         assert len(scope) == len(card)
 
-        # self.scope: a list of the variables over which this Factor defines a ddistribution
+        # self.scope: a list of the variables over which this Factor defines a distribution
         self.scope = scope
 
         # self.card: the cardinality of each variable in self.scope
