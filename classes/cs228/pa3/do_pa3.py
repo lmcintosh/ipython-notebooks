@@ -159,7 +159,7 @@ def do_part_c():
         #for v in Graph.nbr[i]:
         for v in range(len(Graph.var)):
             to_var = Factor(scope=[v], card=[2], val=np.array([0.5, 0.5]))
-            to_fac = Factor(scope=[v], card=[2], val=np.array([0.5, 0.5]))
+            to_fac = Factor(scope=[v], card=[2], val=np.array([1, 1]))
             Graph.messages['var %d, fac %d' %(v,i)] = to_fac
             Graph.messages['fac %d, var %d' %(i,v)] = to_var
 
@@ -169,6 +169,16 @@ def do_part_c():
             if var_i in neighbors:
                 Graph.varToCliques[var_i].append(fac_j)
 
+    Graph.sepset = [[[] for j in xrange(len(Graph.factor))]
+                    for i in xrange(len(Graph.factor))]
+
+    for i in range(H.shape[0]):
+        for j in range(H.shape[1]):
+            if H[i][j]:
+                Graph.sepset[i][H.shape[0] + j].append(j)
+                Graph.sepset[H.shape[0] + j][i].append(j)
+    
+
 
     iterations = 50
     Graph.runParallelLoopyBP(iterations)
@@ -176,8 +186,8 @@ def do_part_c():
     # collect probabilities that bits = 1
     marginals = [Graph.estimateMarginalProbability(i)[1] for i in range(len(yhat))]
 
-    import pdb
-    pdb.set_trace()
+    #import pdb
+    #pdb.set_trace()
 
     # plot it
     plt.scatter(range(len(yhat)), marginals, s=10, color='k')
