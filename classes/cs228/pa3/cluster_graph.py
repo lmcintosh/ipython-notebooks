@@ -7,7 +7,7 @@
 
 from factors import *
 import numpy as np
-import tqdm as tqdm
+from tqdm import tqdm
 
 class ClusterGraph:
     def __init__(self, numVar=0):
