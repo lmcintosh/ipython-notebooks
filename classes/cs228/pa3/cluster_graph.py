@@ -7,6 +7,7 @@
 
 from factors import *
 import numpy as np
+import tqdm as tqdm
 
 class ClusterGraph:
     def __init__(self, numVar=0):
@@ -72,7 +73,7 @@ class ClusterGraph:
         '''
         #import pdb
         #pdb.set_trace()
-        for iter in range(iterations):
+        for iter in tqdm(range(iterations)):
         ###############################################################################
         # To do: your code here
             # go through each factor updating the var to fac messages
@@ -84,20 +85,34 @@ class ClusterGraph:
                             prod_key = 'fac %d, var %d' %(t, i)
                             #import pdb
                             #pdb.set_trace()
+
+                            # first update this fac to var message
+                            for j in self.nbr[s]:
+                                if i != j:
+                                    new_key = 'var %d, fac %d' %(j,s)
+                                    self.messages[prod_key] = self.messages[prod_key].multiply(self.messages[new_key])
+                            self.messages[prod_key] = self.messages[prod_key].multiply(self.factor[s])
+                            self.messages[prod_key] = self.messages[prod_key].normalize()
+                            #self.messages[prod_key] = self.messages[prod_key].marginalize_all_but([])
+
+
                             self.messages[key] = self.messages[key].multiply(self.messages[prod_key])
 
 
                 # update the fac to var messages
-                for i in self.nbr[s]:
-                    key = 'var %d, fac %d' %(i, s)
-                    for j in self.nbr[s]:
-                        if i != j:
-                            prod_key = 'var %d, fac %d' %(j, s)
-                            self.messages[key] = self.messages[key].multiply(self.messages[prod_key])
-                    self.messages[key] = self.messages[key].marginalize_all_but([i])
-
-                    # normalize
-                    self.messages[key] = self.messages[key].normalize()
+                #for i in self.nbr[s]:
+                #    key = 'var %d, fac %d' %(i, s)
+                #    for j in self.nbr[s]:
+                #        if i != j:
+                #            prod_key = 'var %d, fac %d' %(j, s)
+                #            self.messages[key] = self.messages[key].multiply(self.messages[prod_key])
+                #    #import pdb
+                #    #pdb.set_trace()
+                #    self.messages[key] = self.messages[key].multiply(self.factor[s])
+                #    self.messages[key] = self.messages[key].marginalize_all_but([i])
+#
+#                    # normalize
+#                    self.messages[key] = self.messages[key].normalize()
                             
                 
                         
@@ -143,6 +158,8 @@ class ClusterGraph:
         '''
         ###############################################################################
         # To do: your code here  
+        #import pdb
+        #pdb.set_trace()
         for i,f in enumerate(self.varToCliques[var]):
             key = 'fac %d, var %d' %(f, var)
 

@@ -98,9 +98,9 @@ def constructClusterGraph(yhat, H, p):
     for col in range(M):
         # p(yhat_col = 0 | yhat) and p(yhat_col = 1 | yhat), respectively
         if yhat[col] == 1:
-            this_val = [p, 1.0-p]
+            this_val = np.array([p, 1.0-p])
         else:
-            this_val = [1.0-p, p]
+            this_val = np.array([1.0-p, p])
         f = Factor(scope=[col], card=[2], val=this_val, name="unary")
         G.factor.append(f)
 
@@ -139,7 +139,7 @@ def do_part_c():
     marginal probabilities of the unobserved y_i's.
     '''
     G, H = loadLDPC('ldpc36-128.mat')
-    p = 0.05
+    p = 0.5
     N = G.shape[1]
     x = np.zeros((N, 1), dtype='int32')
     y = encodeMessage(x, G)
@@ -176,8 +176,8 @@ def do_part_c():
     # collect probabilities that bits = 1
     marginals = [Graph.estimateMarginalProbability(i)[1] for i in range(len(yhat))]
 
-    #import pdb
-    #pdb.set_trace()
+    import pdb
+    pdb.set_trace()
 
     # plot it
     plt.scatter(range(len(yhat)), marginals, s=10, color='k')
