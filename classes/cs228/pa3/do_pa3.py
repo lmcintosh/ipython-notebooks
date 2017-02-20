@@ -139,7 +139,7 @@ def do_part_c():
     marginal probabilities of the unobserved y_i's.
     '''
     G, H = loadLDPC('ldpc36-128.mat')
-    p = 0.5
+    p = 0.05
     N = G.shape[1]
     x = np.zeros((N, 1), dtype='int32')
     y = encodeMessage(x, G)
@@ -152,31 +152,35 @@ def do_part_c():
     # initialize graph
     Graph = constructClusterGraph(yhat, H, p)
 
-    # initialize neighbors and messages
-    for i,f in enumerate(Graph.factor):
-        Graph.nbr[i] = f.scope
-
-        #for v in Graph.nbr[i]:
-        for v in range(len(Graph.var)):
-            to_var = Factor(scope=[v], card=[2], val=np.array([0.5, 0.5]))
-            to_fac = Factor(scope=[v], card=[2], val=np.array([1, 1]))
-            Graph.messages['var %d, fac %d' %(v,i)] = to_fac
-            Graph.messages['fac %d, var %d' %(i,v)] = to_var
-
     # initialize varToCliques
+    neighbor_vars = [f.scope for f in Graph.factor]
     for var_i in range(len(Graph.varToCliques)):
-        for fac_j,neighbors in enumerate(Graph.nbr):
+        for fac_j,neighbors in enumerate(neighbor_vars):
             if var_i in neighbors:
                 Graph.varToCliques[var_i].append(fac_j)
 
     Graph.sepset = [[[] for j in xrange(len(Graph.factor))]
                     for i in xrange(len(Graph.factor))]
 
+    # initialize nbr and sepset
     for i in range(H.shape[0]):
         for j in range(H.shape[1]):
             if H[i][j]:
+                Graph.nbr[i].append(H.shape[0] + j)
+                Graph.nbr[H.shape[0] + j].append(i)
                 Graph.sepset[i][H.shape[0] + j].append(j)
                 Graph.sepset[H.shape[0] + j][i].append(j)
+
+    # initialize messages
+    Graph.messages = [[None for dst in range(len(Graph.factor))]
+                        for src in range(len(Graph.factor))]
+    for src in range(len(Graph.factor)):
+        for dst in Graph.nbr[src]:
+            this_scope = Graph.sepset[src][dst]
+            this_card = [2]*len(this_scope)
+            Graph.messages[src][dst] = Factor(scope=this_scope,
+                                            card=this_card,
+                                            val=np.tile(1.0, this_card))
     
 
 
@@ -205,6 +209,8 @@ def do_part_de(numTrials, error, iterations=50):
     G, H = loadLDPC('ldpc36-128.mat')
     ##############################################################
     # To do: your code starts here
+
+    #### In ipython notebook!!! ####
 
 
 
