@@ -31,7 +31,7 @@ class ClusterGraph:
         self.nbr = []
         self.factor = []
         self.sepset = []
-        self.messages = {}
+        self.messages = []
     
     def evaluateWeight(self, assignment):
         '''
@@ -73,121 +73,31 @@ class ClusterGraph:
         '''
         #import pdb
         #pdb.set_trace()
-        for iter in tqdm(range(iterations)):
+        ordering = []
+        for s,fs in enumerate(self.factor):
+            for i in self.nbr[s]:
+                ordering.append((s, i))
+
+        #for iter in tqdm(range(iterations)):
+        for iter in range(iterations):
         ###############################################################################
         # To do: your code here
-            # go through each factor updating the var to fac messages
-            for s,fs in enumerate(self.factor):
-                for i in self.nbr[s]:
-                    key = 'var %d, fac %d' %(i, s)
-                    sent_messages = []
-                    for t in self.varToCliques[i]:
-                        if s != t:
-                            prod_key = 'fac %d, var %d' %(t, i)
-                            sent_messages.append(self.messages[prod_key])
+            # go through each factor updating the fac to var messages via the var to fac messages
+            np.random.shuffle(ordering)
 
-                    # process sent messages, if any
-                    if len(sent_messages) > 1:
-                        prod = sent_messages[0].multiply(sent_messages[1])
-                        for msg in sent_messages[2:]:
-                            prod = prod.multiply(msg)
-                    elif len(sent_messages) > 0:
-                        prod = sent_messages[0]
-                    else:
-                        prod = self.messages[key]
+            for (s, i) in ordering:
+                prod = self.factor[s]
+                #key = 'var %d, fac %d' %(i, s)
+                #key = 'fac %d, var %d' %(s, i)
+                for neighbor in self.nbr[s]:
+                    if i != neighbor:
+                        # multiply var to fac messages
+                        #prod_key = 'var %d, fac %d' %(neighbor, s)
+                        prod = prod.multiply(self.messages[neighbor][s])
+                        prod = prod.normalize()
+                prod = prod.marginalize_all_but(self.sepset[s][i])
+                self.messages[s][i] = prod
 
-                    # set this var to fac message to be the product of these sent messages
-                    self.messages[key] = prod
-
-                            #import pdb
-                            #pdb.set_trace()
-
-                            # first update this fac to var message
-                            #for j in self.nbr[s]:
-                            #    if i != j:
-                            #        new_key = 'var %d, fac %d' %(j,s)
-                            #        self.messages[prod_key] = self.messages[prod_key].multiply(self.messages[new_key])
-                            #self.messages[prod_key] = self.messages[prod_key].multiply(self.factor[s])
-                            #self.messages[prod_key] = self.messages[prod_key].normalize()
-                            #self.messages[prod_key] = self.messages[prod_key].marginalize_all_but([])
-
-
-                            #self.messages[key] = self.messages[key].multiply(self.messages[prod_key])
-            #for s,fs in enumerate(self.factor):
-            #    for i in self.nbr[s]:
-                    key = 'fac %d, var %d' %(s, i)
-                    received_messages = []
-                    for ihat in self.nbr[s]:
-                        if i != ihat:
-                            prod_key = 'var %d, fac %d' %(ihat, s)
-                            received_messages.append(self.messages[prod_key])
-
-                    # process received messages, if any
-                    if len(received_messages) > 1:
-                        prod = received_messages[0].multiply(received_messages[1])
-                        for msg in received_messages[2:]:
-                            try:
-                                prod = prod.multiply(msg)
-                            except:
-                                import pdb
-                                pdb.set_trace()
-                    elif len(received_messages) > 0:
-                        prod = received_messages[0]
-                    else:
-                        prod = self.messages[key]
-
-                    # update beliefs using factors
-                    prod.multiply(self.factor[s])
-
-                    # the sum part of sum-product algorithm
-                    prod.marginalize_all_but([i])
-
-                    # don't forget to normalize!
-                    prod.normalize()
-                    self.messages[key] = prod
-
-
-
-                # update the fac to var messages
-                #for i in self.nbr[s]:
-                #    key = 'var %d, fac %d' %(i, s)
-                #    for j in self.nbr[s]:
-                #        if i != j:
-                #            prod_key = 'var %d, fac %d' %(j, s)
-                #            self.messages[key] = self.messages[key].multiply(self.messages[prod_key])
-                #    #import pdb
-                #    #pdb.set_trace()
-                #    self.messages[key] = self.messages[key].multiply(self.factor[s])
-                #    self.messages[key] = self.messages[key].marginalize_all_but([i])
-#
-#                    # normalize
-#                    self.messages[key] = self.messages[key].normalize()
-                            
-                
-                        
-                        
-            #    src, src_i, dst, dst_i = key.split(' ')
-            #for i,v in enumerate(self.var):
-            #for key in self.messages.keys():
-            #    src, src_i, dst, dst_i = key.split(' ')
-
-                # each key is (src, dst) pair
-                #src, dst = key
-
-                # for b in N(i) \ a
-            #    prod = 1.0
-            #    for b in self.nbr[src]:
-                #for b in self.sepset[src]
-            #        if b != dst:
-            #            prod *= self.messages[(b, src)]
-
-                # set the new message to be this product
-                #self.messages[key] = prod
-
-                # normalize the message at each time
-                #f = self.messages[key]
-                #f = f.normalize()
-                #self.messages[key] = f
 
         ###############################################################################
         
@@ -207,17 +117,22 @@ class ClusterGraph:
         '''
         ###############################################################################
         # To do: your code here  
+        # the last factor in varToCliques is the unary factor
+        # let's start with that for our marginalization
+        last_factor = self.varToCliques[var][-1]
+        marginal_p = self.factor[last_factor]
+        # for variables connected to this factor
         #import pdb
         #pdb.set_trace()
-        for i,f in enumerate(self.varToCliques[var]):
-            key = 'fac %d, var %d' %(f, var)
 
-            if i == 0:
-                marginal_p = self.messages[key]
-            else:
-                marginal_p = marginal_p.multiply(self.messages[key])
-            
+        for neighbor in self.nbr[last_factor]:
+            #key = 'fac %d, var %d' %(f, var) 
+            marginal_p = marginal_p.multiply(self.messages[neighbor][last_factor])
+            marginal_p = marginal_p.normalize()
+        marginal_p = marginal_p.marginalize_all_but([var])
+
         return marginal_p.val
+
         ###############################################################################
     
 
@@ -235,6 +150,7 @@ class ClusterGraph:
         output = np.zeros(len(self.var))
         ###############################################################################
         # To do: your code here  
+        
 
         
         
