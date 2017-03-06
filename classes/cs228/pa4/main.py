@@ -149,7 +149,7 @@ def get_posterior_by_sampling(filename, initialization = 'same', logfile = None,
             log.write('%d\t%0.5f\t%s\n' %(b+1, energy, 'B'))
 
     # Sample post-burn
-    posterior = np.zeros_like(Y)
+    posterior = np.zeros_like(Y, dtype='float64')
     frequencyZ = Counter()
     Z_region = np.zeros_like(Y)
     Z_region[125:163, 143:175] = 1
@@ -198,7 +198,7 @@ def denoise_image(filename, initialization = 'rand', logfile=None, DUMB_SAMPLE =
         return Y, frequencyZ
     else:
         denoised = np.zeros(posterior.shape)
-        denoised[np.where(posterior<.5)] = 1
+        denoised = np.where(posterior >.5, 1, -1)
         return denoised, frequencyZ
 
 
@@ -259,7 +259,7 @@ def convert_to_png(denoised_image, title):
     '''
     save array as a png figure with given title.
     '''
-    plt.imshow(denoised_image, cmap=plt.cm.gray)
+    plt.imshow(denoised_image, cmap=plt.cm.gray_r)
     plt.title(title)
     plt.savefig(title + '.png')
 
