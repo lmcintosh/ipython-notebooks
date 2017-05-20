@@ -31,6 +31,16 @@ todays_date = str(datetime.date.today())
 print(todays_date)
 
 # parameters
+microns_per_degree = 50.0 # depends on species; this is for salamander
+photoreceptor_width = 10.0/microns_per_degree # salamander photoreceptors have width of 10-20 microns
+retina_width = 4000.0/microns_per_degree # salamander retina is about 4 mm
+frequency_spacing = 1./retina_width # this is the lowest non-DC frequency we can estimate
+highest_frequency = 0.5/photoreceptor_width # this is the highest frequency we can estimate (Nyquist freq.)
+
+N = int(retina_width//photoreceptor_width)
+freqs = np.linspace(0, highest_frequency, N//2 + 1)
+space = np.concatenate([np.linspace(-0.5*retina_width, 0, N//2 + 1)[:-1], np.linspace(0, 0.5*retina_width, N//2 + 1)])
+
 input_noise = 0.0469253741641
 output_noise = 0.35
 target_power = 48.053365503112332
@@ -40,8 +50,14 @@ resolution = 100
 horz_weights = np.linspace(0,1,resolution)
 center_weights = np.linspace(0,1,resolution)
 
-# some necessary pre-processing
+# choose an image path from cd13A (flood plain, water, horizon) or cd01A (baboons, trees, bushes)
+pixelsToDeg = 92./2 # or 2./92 degrees per pixel (spacing)
+spacing = 1./pixelsToDeg # number of degree spacing between pixels
+normalize = 'divisive'
+contrast = 0.35
+signal = np.array(np.load('signal_3_23.npy'))
 
+# some necessary pre-processing
 # load data
 # These are loaded as (space, receptive) field tuples
 cells = {}
